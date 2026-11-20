@@ -1,4 +1,9 @@
 {
   "framework": "vite",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": {
+      "milestone/v1": false
+    }
+  }
 }
