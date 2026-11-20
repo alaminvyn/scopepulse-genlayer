@@ -7,16 +7,14 @@ ScopePulse compares two versions of a software requirement and uses a GenLayer I
 1. Open [New assessment](https://scopepulse-genlayer.vercel.app/#compare). Paste the two versions or load the synthetic audit-log example. Each version supports up to 2,048 UTF-8 bytes. Editing and comparison stay in the browser.
 2. Use **Split** or **Unified**, navigate change groups, and expand unchanged context when needed. Local cues identify visible changes to numbers, timing, roles, or obligation wording.
 3. Open the [Reviewer Demo](https://scopepulse-genlayer.vercel.app/#demo) for three authored examples. Click an evidence line to jump to its source. The Bradbury deployment check is a separate live read.
-4. Open [Verify assessment](https://scopepulse-genlayer.vercel.app/#verify) with a GenLayer ID or wallet transaction hash. Copy the ID-only report link for another reviewer. Once an assessment is verified, print the report or save it to browser history.
+4. Open [Verify assessment](https://scopepulse-genlayer.vercel.app/#verify) with a GenLayer ID or wallet transaction hash. Copy the identifier-only report link for another reviewer. Once an assessment is verified, print the report or save it to browser history.
 5. Use [History](https://scopepulse-genlayer.vercel.app/#history) to search and filter locally tracked results. Open a public report to recover its reference in another browser.
 
-Wallet writes are paused while the Blockaid review is unresolved. The quote path, when enabled, can transmit input text to the public RPC. A signed transaction makes both versions public in its calldata.
+Wallet writes are enabled for Vercel Production. The quote path can transmit input text to the public RPC. A signed transaction makes both versions public in its calldata.
 
 ## Run locally
 
-Use Node.js 22.18+ or 24 and pnpm. Install with `pnpm install --frozen-lockfile`, start with `pnpm dev`, then open the URL printed by Vite. The local comparison and simulated demo run with no environment configuration. Set the public contract address to enable the live deployment check. Wallet writes stay disabled unless `VITE_ENABLE_WALLET_WRITES=true` is set.
-
-Use pnpm 11 with Node.js 24 for the reproducible CI environment.
+Use Node.js 24 and pnpm 11. Install with `pnpm install --frozen-lockfile`, start with `pnpm dev`, then open the URL printed by Vite. The local comparison and simulated demo run with no environment configuration. Set the public contract address to enable the live deployment check. Wallet writes stay disabled unless `VITE_ENABLE_WALLET_WRITES=true` is set.
 
 | Command | Coverage |
 | --- | --- |
@@ -36,7 +34,7 @@ The wallet suite uses the pinned SDK with a mock EIP-1193 provider and mocked RP
 4. Copy `.env.example` to `.env.local` and set `VITE_SCOPEPULSE_CONTRACT` to the verified address. Restart the dev server. The browser submits an RPC simulation before quoting a write when no measured fee profile is supplied. In production, use profile quantities measured against the deployed runtime and the bounded representative inputs. Set all three optional allocation fields together.
 5. Submit at least one example through the app. Keep the assessment's GenLayer ID and wallet transaction hash. Set `VITE_DEMO_TRANSACTION` to the verified GenLayer ID to enable its wallet-free readback and `VITE_DEMO_ENVELOPE` to its optional wallet hash for the explorer link.
 
-| Live scenario | Original | Revised | Expected verdict |
+| Authored scenario | Original | Revised | Expected verdict |
 | --- | --- | --- | --- |
 | Export formats | Users can export reports as PDF. | Users can export reports as PDF. Users can also export as CSV. | Compatible |
 | Audit retention | Retain audit logs for at least 90 days. | Delete audit logs after 30 days. | Potential conflict |
@@ -59,6 +57,6 @@ The [production site](https://scopepulse-genlayer.vercel.app/) runs on Vercel. T
 
 The initial immutable deployment failed an assessment dry run because its GenVM runner requires a positional argument for the comparison principle. The corrected contract at `0xC437D73bCd58b8B5a3Fe5e601A6B9A2283E2D64F` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN` and its deployed source matches this repository. The GenLayer deployment ID is `0xf3b0c431e13c7306e922abac5ff8d9ac7c45773b32e6144292965f7b01c4e96e`. [Corrected deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x1216a73d54b6d12ce440ecaef275a3b8a74e2d1f2b1d9f9d4f79637486b1b58f)
 
-The synthetic audit-log example passed a live Bradbury simulation. A wallet-signed assessment and its finalized verdict are pending while Blockaid reviews the site warning. See the [GenLayer Builder evidence](BUILDER.md) for the reviewer path, verification steps, and release status.
+The first real audit-log assessment finalized successfully with a stored `potential_conflict` verdict. The report works without a wallet. [Public assessment report](https://scopepulse-genlayer.vercel.app/#verify/wallet/0x1af8c4a8a7d257c7f6127ded97c0575bc541c03b617daccecf88bee6a41c7206) · [Assessment explorer](https://scan.testnet-chain.genlayer.com/tx/0x1af8c4a8a7d257c7f6127ded97c0575bc541c03b617daccecf88bee6a41c7206). See the [GenLayer Builder evidence](BUILDER.md) for transaction details, the audit, and the reviewer walkthrough.
 
 [GenLayer networks](https://docs.genlayer.com/developers/networks) · [Consensus v0.6 migration](https://docs.genlayer.com/developers/consensus-v06-migration)
