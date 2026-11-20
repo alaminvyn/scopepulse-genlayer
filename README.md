@@ -47,6 +47,8 @@ The SDK is pinned to `genlayer-js@2.0.0-rc.3`. Bradbury Phase 2 uses chain ID 42
 
 The [production site](https://scopepulse-genlayer.vercel.app/) runs on Vercel. The initial Bradbury contract at `0xC89DbD4Abf4748611d1c9C6929Ae17Bf67802553` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN` during deployment. Its GenLayer deployment ID is `0xfb4d4fb80ca5b9ce66cc1ac8208aeb26f0a6c442d0f3adc13e494734aff922a9`. [Deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x96b7ae2f0a5ad5535c3958d8705f124d522a12fb37b78f4c11222ad4c3a04773)
 
-An assessment dry run identified a positional-only argument mismatch in that immutable deployment. The source now uses the compatible call form. A corrected deployment and a finalized assessment are pending before the reviewer demo can show a verified example.
+The initial immutable deployment failed an assessment dry run because its GenVM runner requires a positional argument for the comparison principle. The corrected contract at `0xC437D73bCd58b8B5a3Fe5e601A6B9A2283E2D64F` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN` and its deployed source matches this repository. The GenLayer deployment ID is `0xf3b0c431e13c7306e922abac5ff8d9ac7c45773b32e6144292965f7b01c4e96e`. [Corrected deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x1216a73d54b6d12ce440ecaef275a3b8a74e2d1f2b1d9f9d4f79637486b1b58f)
+
+The synthetic audit-log example passed a live Bradbury simulation. A wallet-signed assessment and its finalized verdict are pending.
 
 [GenLayer networks](https://docs.genlayer.com/developers/networks) · [Consensus v0.6 migration](https://docs.genlayer.com/developers/consensus-v06-migration)
