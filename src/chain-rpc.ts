@@ -93,26 +93,22 @@ export async function submit(
   const trackedProvider: Provider = {
     request: async (request: { method: string; params?: unknown[] }) => {
       if (request.method === 'eth_sendTransaction') {
+        const tx = assertAssessmentRequest(request.params?.[0], { caller, contract: assessmentAddress, id, original, revised, fees });
+        // The SDK can fall back to a fixed gas limit after a reverted estimate.
+        // Require an independent preflight of the exact request before handing it to the wallet.
+        let estimatedGas: bigint;
+        try {
+          estimatedGas = await withDeadline(read.estimateTransactionGas({ from: tx.from, to: tx.to, data: tx.data, value: BigInt(tx.value) }));
+        } catch {
+          throw new Error('Gas estimation failed for this exact assessment. No wallet request was sent.');
+        }
+        if (estimatedGas <= 0n || BigInt(tx.gas) < estimatedGas) {
+          throw new Error('The wallet transaction gas limit is below the verified estimate.');
+        }
         await assertBradburyWallet(provider);
-        const tx = request.params?.[0] as { from?: string; to?: string; value?: string; chainId?: string; data?: Hash } | undefined;
-        if (tx?.from?.toLowerCase() !== caller.toLowerCase() ||
-            tx?.to?.toLowerCase() !== testnetBradbury.consensusMainContract?.address.toLowerCase() ||
-            tx?.chainId !== chainId || !tx.value || BigInt(tx.value) !== fees.feeValue) {
-          throw new Error('The wallet transaction does not match the reviewed Bradbury fee and recipient.');
-        }
-        if (!tx.data) throw new Error('Wallet transaction payload is missing.');
-        const decoded = decodeFunctionData({ abi: testnetBradbury.consensusMainContract!.abi, data: tx.data });
-        const payload = decoded.args?.[0] as {
-          sender: Address; recipient: Address; userValue: bigint; txCalldata: Hash; messageAllocations: unknown[];
-        } | undefined;
-        if (decoded.functionName !== 'addTransaction' || !payload ||
-            payload.sender?.toLowerCase() !== caller.toLowerCase() || payload.recipient?.toLowerCase() !== assessmentAddress.toLowerCase() ||
-            payload.userValue !== 0n || !Array.isArray(payload.messageAllocations) || payload.messageAllocations.length) {
-          throw new Error('Wallet transaction does not match the reviewed assessment.');
-        }
-        const call = assessmentCall(decodeInputData(payload.txCalldata, assessmentAddress));
-        if (!call || call.some((value, index) => value !== [id, original, revised][index])) {
-          throw new Error('Wallet transaction contains unexpected assessment inputs.');
+        const selected = await provider.request({ method: 'eth_accounts' }) as Address[];
+        if (selected[0]?.toLowerCase() !== caller.toLowerCase()) {
+          throw new Error('The selected account changed. Review the submission again.');
         }
       }
       const result = await provider.request(request);
@@ -128,6 +124,53 @@ export async function submit(
   onReference({ ...reference });
 }
 
+export function assertAssessmentRequest(
+  request: unknown,
+  expected: { caller: Address; contract: Address; id: string; original: string; revised: string; fees: Awaited<ReturnType<typeof quote>>['fees'] },
+) {
+  const tx = request as { from?: Address; to?: Address; value?: Hash; chainId?: string; data?: Hash; gas?: Hash } | undefined;
+  const consensus = testnetBradbury.consensusMainContract;
+  if (!consensus || tx?.from?.toLowerCase() !== expected.caller.toLowerCase() ||
+      tx?.to?.toLowerCase() !== consensus.address.toLowerCase() || tx.chainId !== chainId ||
+      typeof tx.value !== 'string' || !/^0x[0-9a-f]+$/i.test(tx.value) || BigInt(tx.value) !== expected.fees.feeValue) {
+    throw new Error('The wallet transaction does not match the reviewed Bradbury fee and recipient.');
+  }
+
+  if (!tx.data) throw new Error('Wallet transaction payload is missing.');
+  if (typeof tx.gas !== 'string' || !/^0x[0-9a-f]+$/i.test(tx.gas) || BigInt(tx.gas) <= 0n) {
+    throw new Error('Wallet transaction gas limit is invalid.');
+  }
+  const decoded = decodeFunctionData({ abi: consensus.abi, data: tx.data });
+  const payload = decoded.args?.[0] as {
+    sender: Address; recipient: Address; userValue: bigint; txCalldata: Hash;
+    messageAllocations: unknown[]; feesDistribution: Record<string, unknown>;
+  } | undefined;
+  if (decoded.functionName !== 'addTransaction' || !payload ||
+      payload.sender?.toLowerCase() !== expected.caller.toLowerCase() ||
+      payload.recipient?.toLowerCase() !== expected.contract.toLowerCase() ||
+      payload.userValue !== 0n || !Array.isArray(payload.messageAllocations) || payload.messageAllocations.length) {
+    throw new Error('Wallet transaction does not match the reviewed assessment.');
+  }
+
+  const distribution = expected.fees.distribution;
+  const encodedFees = payload.feesDistribution;
+  if (!encodedFees || Object.entries(distribution).some(([key, value]) => {
+    const encoded = encodedFees[key];
+    return Array.isArray(value)
+      ? !Array.isArray(encoded) || value.length !== encoded.length || value.some((item, index) => item !== encoded[index])
+      : value !== encoded;
+  })) {
+    throw new Error('Wallet transaction contains an unexpected fee distribution.');
+  }
+
+  const call = assessmentCall(decodeInputData(payload.txCalldata, expected.contract));
+  const args = [expected.id, expected.original, expected.revised];
+  if (!call || call.some((value, index) => value !== args[index])) {
+    throw new Error('Wallet transaction contains unexpected assessment inputs.');
+  }
+  return { from: expected.caller, to: consensus.address, value: tx.value, data: tx.data, gas: tx.gas };
+}
+
 const createdTransactionAbi = [{
   type: 'event', name: 'CreatedTransaction',
   inputs: [{ name: 'txId', type: 'bytes32', indexed: true }, { name: 'txSlot', type: 'uint256', indexed: false }],
@@ -138,12 +181,19 @@ export async function resolveEnvelope(hash: Hash) {
   const envelope = await withDeadline(read.getTransactionReceipt({ hash }));
   if (envelope.status === 'reverted') throw new Error('Wallet transaction reverted.');
   const consensus = testnetBradbury.consensusMainContract;
+  if (!consensus || envelope.transactionHash.toLowerCase() !== hash.toLowerCase() ||
+      envelope.to?.toLowerCase() !== consensus.address.toLowerCase()) {
+    throw new Error('Wallet receipt does not match the expected Bradbury consensus transaction.');
+  }
   const logs = envelope.logs.filter(log => log.address.toLowerCase() === consensus?.address.toLowerCase());
   const events = parseEventLogs({ abi: consensus?.abi ?? [], eventName: 'NewTransaction', logs });
-  const args = (events[0] as { args?: { txId?: Hash } } | undefined)?.args;
-  const resolved = args?.txId ?? parseEventLogs({ abi: createdTransactionAbi, logs })[0]?.args.txId;
-  if (!resolved) throw new Error('No GenLayer ID was found in the wallet transaction.');
-  return resolved;
+  const emittedIds = new Set([
+    ...events.map(event => (event as { args?: { txId?: Hash } }).args?.txId),
+    ...parseEventLogs({ abi: createdTransactionAbi, logs }).map(event => event.args.txId),
+  ].filter((id): id is Hash => Boolean(id && hashPattern.test(id))).map(id => id.toLowerCase() as Hash));
+  if (emittedIds.size === 0) throw new Error('No GenLayer ID was found in the wallet transaction.');
+  if (emittedIds.size !== 1) throw new Error('Wallet transaction returned multiple GenLayer IDs.');
+  return [...emittedIds][0];
 }
 
 function assessmentCall(decoded: ReturnType<typeof decodeInputData> | undefined): [string, string, string] | undefined {
@@ -164,7 +214,7 @@ export async function verifyAssessment(kind: LookupKind, input: Hash): Promise<O
     return { ...await observe(hash), envelope: input };
   } catch (error) {
     const phase = errorMessage(error);
-    if (phase === 'Wallet transaction reverted.' || phase.startsWith('No GenLayer ID')) {
+    if (phase === 'Wallet transaction reverted.' || phase.startsWith('No GenLayer ID') || phase.startsWith('Wallet receipt') || phase.includes('multiple GenLayer IDs')) {
       return { state: 'failed', phase, terminal: true, envelope: input };
     }
     throw error;
@@ -185,7 +235,7 @@ export async function observe(target: Reference | Hash): Promise<Observation> {
     }
     catch (error) {
       const phase = errorMessage(error);
-      if (phase === 'Wallet transaction reverted.' || phase.startsWith('No GenLayer ID')) return { state: 'failed', phase, terminal: true };
+      if (phase === 'Wallet transaction reverted.' || phase.startsWith('No GenLayer ID') || phase.startsWith('Wallet receipt') || phase.includes('multiple GenLayer IDs')) return { state: 'failed', phase, terminal: true };
       throw error;
     }
   }

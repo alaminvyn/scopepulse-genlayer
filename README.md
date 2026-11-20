@@ -21,12 +21,12 @@ Use pnpm 11 with Node.js 24 for the reproducible CI environment.
 | Command | Coverage |
 | --- | --- |
 | `pnpm build` | TypeScript checking and the production bundle |
-| `pnpm test` | Deterministic changes, inline tokens, source ranges, report IDs, and result validation |
+| `pnpm test` | Deterministic changes, source ranges, report validation, and isolated wallet/RPC integration mocks |
 | `python3 -m unittest discover -s tests -v` | Contract input and storage behavior with stubbed GenVM and model responses |
 | `pnpm exec playwright install chromium` then `pnpm test:browser` | Desktop comparison, mobile reviewer experience, wallet pause, and report lookup failures |
 | `pnpm verify:bradbury` | Read-only public RPC and explorer validation of the deployment, source, and schema |
 
-The browser suite blocks the Bradbury RPC to exercise predictable failure states. The separate Bradbury script checks the live network without signing or publishing a transaction.
+The wallet suite uses the pinned SDK with a mock EIP-1193 provider and mocked RPC responses. It exercises unsigned request construction, fee and calldata checks, rejection, and readback recovery. Run just that suite with `pnpm exec node --experimental-strip-types --test tests/wallet.test.ts`. The browser suite blocks the Bradbury RPC to exercise predictable failure states. The separate Bradbury script checks the live network without signing or publishing a transaction.
 
 ## Deploy on Bradbury Phase 2
 
