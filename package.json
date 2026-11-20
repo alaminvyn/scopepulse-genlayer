@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "verify:bradbury": "node --experimental-strip-types scripts/verify-bradbury.mts",
+    "verify:clause": "node --experimental-strip-types scripts/verify-clause-bradbury.mts",
     "test:browser": "playwright test"
   },
   "dependencies": {

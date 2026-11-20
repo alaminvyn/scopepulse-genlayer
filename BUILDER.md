@@ -48,8 +48,8 @@ These three outcomes are authored simulations. The [finalized audit-log report](
 | GenLayer consensus status | `FINALIZED` |
 | GenLayer execution status | `FINISHED_WITH_RETURN` |
 | Wallet transaction | [Bradbury explorer](https://scan.testnet-chain.genlayer.com/tx/0x1216a73d54b6d12ce440ecaef275a3b8a74e2d1f2b1d9f9d4f79637486b1b58f) |
-| Source | [Python contract](contracts/scopepulse.py), checked against deployed source |
-| Repository | [alaminvyn/scopepulse-genlayer](https://github.com/alaminvyn/scopepulse-genlayer), private |
+| Source | [Accepted Python contract](https://github.com/alaminvyn/scopepulse-genlayer/blob/e8fa498dd38b56eef88fbcc9a77bd98a052c236a/contracts/scopepulse.py), checked against deployed source |
+| Repository | [alaminvyn/scopepulse-genlayer](https://github.com/alaminvyn/scopepulse-genlayer), public |
 
 ## Verification model
 
@@ -73,7 +73,7 @@ The React/Vite frontend uses the public Bradbury RPC. Wallet connection requests
 - The public report was verified in fresh desktop (1440 px) and mobile (390 px) Chrome contexts. It opened with empty local storage and zero wallet-provider access. Both contexts exercised history recovery, navigation, comparison controls, and separation of the simulation from the real verdict.
 - Wallet writes are enabled for Vercel Production. The contract source matches the verified deployment. No wallet connection, signing, or write was performed during the audit.
 - The dependency audit returned zero known advisories. A pattern scan of 55 tracked historical blobs found no candidate secrets. HTTPS and HSTS were present. The production response did not include a Content Security Policy or explicit frame protection.
-- The repository is private. Share access with Builder reviewers if source review is required. The report and block explorer are public.
+- The repository, report, and block explorer are publicly accessible.
 
 ## Limitations
 

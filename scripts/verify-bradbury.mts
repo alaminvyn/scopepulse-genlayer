@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { createClient, isSuccessful } from 'genlayer-js';
 import { testnetBradbury as chain } from 'genlayer-js/chains';
 import type { TransactionHash } from 'genlayer-js/types';
@@ -23,7 +23,9 @@ assert.ok(isSuccessful(transaction));
 assert.equal(transaction.txDataDecoded?.type, 'deploy');
 assert.equal(transaction.recipient?.toLowerCase(), deployment.address.toLowerCase());
 const code = await client.getContractCode(deployment.address);
-const local = await readFile(new URL('../contracts/scopepulse.py', import.meta.url), 'utf8');
+const local = execFileSync('git', ['show', 'e8fa498dd38b56eef88fbcc9a77bd98a052c236a:contracts/scopepulse.py'], {
+  cwd: new URL('../', import.meta.url), encoding: 'utf8',
+});
 assert.ok(code === local || Buffer.from(code, 'base64').toString() === local);
 const schema = await client.getContractSchema(deployment.address);
 assert.ok(schema.methods.assess && schema.methods.get_assessment);

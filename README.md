@@ -2,6 +2,8 @@
 
 ScopePulse compares two versions of a software requirement and uses a GenLayer Intelligent Contract to review whether the revision preserves, conflicts with, or leaves an original obligation unclear.
 
+Milestone V1 adds a separate policy-clause assessment contract on Bradbury. See [Milestone V1 evidence and verification](MILESTONE_V1.md) for the finalized example and wallet-free reviewer commands.
+
 ## Review requirements
 
 1. Open [New assessment](https://scopepulse-genlayer.vercel.app/#compare). Paste the two versions or load the synthetic audit-log example. Each version supports up to 2,048 UTF-8 bytes. Editing and comparison stay in the browser.
@@ -55,7 +57,7 @@ The SDK is pinned to `genlayer-js@2.0.0-rc.3`. Bradbury Phase 2 uses chain ID 42
 
 The [production site](https://scopepulse-genlayer.vercel.app/) runs on Vercel. The initial Bradbury contract at `0xC89DbD4Abf4748611d1c9C6929Ae17Bf67802553` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN` during deployment. Its GenLayer deployment ID is `0xfb4d4fb80ca5b9ce66cc1ac8208aeb26f0a6c442d0f3adc13e494734aff922a9`. [Deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x96b7ae2f0a5ad5535c3958d8705f124d522a12fb37b78f4c11222ad4c3a04773)
 
-The initial immutable deployment failed an assessment dry run because its GenVM runner requires a positional argument for the comparison principle. The corrected contract at `0xC437D73bCd58b8B5a3Fe5e601A6B9A2283E2D64F` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN` and its deployed source matches this repository. The GenLayer deployment ID is `0xf3b0c431e13c7306e922abac5ff8d9ac7c45773b32e6144292965f7b01c4e96e`. [Corrected deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x1216a73d54b6d12ce440ecaef275a3b8a74e2d1f2b1d9f9d4f79637486b1b58f)
+The initial immutable deployment failed an assessment dry run because its GenVM runner requires a positional argument for the comparison principle. The corrected contract at `0xC437D73bCd58b8B5a3Fe5e601A6B9A2283E2D64F` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN`, and its deployed source matches the [accepted baseline contract](https://github.com/alaminvyn/scopepulse-genlayer/blob/e8fa498dd38b56eef88fbcc9a77bd98a052c236a/contracts/scopepulse.py). The GenLayer deployment ID is `0xf3b0c431e13c7306e922abac5ff8d9ac7c45773b32e6144292965f7b01c4e96e`. [Corrected deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x1216a73d54b6d12ce440ecaef275a3b8a74e2d1f2b1d9f9d4f79637486b1b58f)
 
 The first real audit-log assessment finalized successfully with a stored `potential_conflict` verdict. The report works without a wallet. [Public assessment report](https://scopepulse-genlayer.vercel.app/#verify/wallet/0x1af8c4a8a7d257c7f6127ded97c0575bc541c03b617daccecf88bee6a41c7206) · [Assessment explorer](https://scan.testnet-chain.genlayer.com/tx/0x1af8c4a8a7d257c7f6127ded97c0575bc541c03b617daccecf88bee6a41c7206). See the [GenLayer Builder evidence](BUILDER.md) for transaction details, the audit, and the reviewer walkthrough.
 
