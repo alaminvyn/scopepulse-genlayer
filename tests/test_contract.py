@@ -13,7 +13,10 @@ def load_contract():
     genlayer.public = SimpleNamespace(write=lambda fn: fn, view=lambda fn: fn)
     genlayer.message = SimpleNamespace(sender_address=SimpleNamespace(as_hex="0x" + "a" * 40))
     genlayer.nondet = SimpleNamespace(exec_prompt=Mock())
-    genlayer.eq_principle = SimpleNamespace(prompt_comparative=Mock(side_effect=lambda fn, **_: fn()))
+    def prompt_comparative(fn, principle, /):
+        return fn()
+
+    genlayer.eq_principle = SimpleNamespace(prompt_comparative=Mock(side_effect=prompt_comparative))
     storage = ModuleType("genlayer.storage")
     storage.TreeMap = dict
     source = Path(__file__).resolve().parents[1] / "contracts" / "scopepulse.py"

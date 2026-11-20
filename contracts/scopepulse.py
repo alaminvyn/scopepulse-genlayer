@@ -71,7 +71,7 @@ Requirement data:
 
         result = gl.eq_principle.prompt_comparative(
             evaluate,
-            principle="The verdict must match exactly and the rationale and evidence must identify substantively the same decisive obligations or uncertainty.",
+            "The verdict must match exactly and the rationale and evidence must identify substantively the same decisive obligations or uncertainty.",
         )
         self.assessments[key] = validated_result(result, original, revised)
 

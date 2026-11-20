@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { type Hash } from 'viem';
+import { keccak256, stringToHex, type Hash } from 'viem';
 import { connectWallet, deployContract, errorMessage, explorer, hashPattern, inspectDeployment, quoteDeployment, resolveEnvelope } from './chain';
 import code from '../contracts/scopepulse.py?raw';
+
+const deploymentKey = 'scopepulse.deploy.' + keccak256(stringToHex(code));
 
 function storedHash(key: string): Hash | undefined {
   const value = localStorage.getItem(key);
@@ -9,8 +11,8 @@ function storedHash(key: string): Hash | undefined {
 }
 
 export default function Deployment() {
-  const [envelope, setEnvelope] = useState(() => storedHash('scopepulse.deploy.envelope'));
-  const [hash, setHash] = useState(() => storedHash('scopepulse.deploy.hash'));
+  const [envelope, setEnvelope] = useState(() => storedHash(deploymentKey + '.envelope'));
+  const [hash, setHash] = useState(() => storedHash(deploymentKey + '.hash'));
   const [status, setStatus] = useState<Awaited<ReturnType<typeof inspectDeployment>>>();
   const [prepared, setPrepared] = useState<{ wallet: Awaited<ReturnType<typeof connectWallet>>; estimate: Awaited<ReturnType<typeof quoteDeployment>> }>();
   const [busy, setBusy] = useState(false);
@@ -26,7 +28,7 @@ export default function Deployment() {
         if (stopped) return;
         if (!hash) {
           setHash(id);
-          localStorage.setItem('scopepulse.deploy.hash', id);
+          localStorage.setItem(deploymentKey + '.hash', id);
           return;
         }
         const result = await inspectDeployment(id);
@@ -58,10 +60,10 @@ export default function Deployment() {
     try {
       const id = await deployContract(prepared.wallet, code, prepared.estimate.fees, value => {
         setEnvelope(value);
-        localStorage.setItem('scopepulse.deploy.envelope', value);
+        localStorage.setItem(deploymentKey + '.envelope', value);
       });
       setHash(id);
-      localStorage.setItem('scopepulse.deploy.hash', id);
+      localStorage.setItem(deploymentKey + '.hash', id);
     } catch (error) { setNotice(errorMessage(error)); }
     finally { setPrepared(undefined); setBusy(false); }
   }

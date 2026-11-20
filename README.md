@@ -45,6 +45,8 @@ Check the verdict and literal evidence after finalization for every scenario. Di
 
 The SDK is pinned to `genlayer-js@2.0.0-rc.3`. Bradbury Phase 2 uses chain ID 4221 and genesis `0x17d89764d4f4f963158fc4c5e8f2cb670c2837740b35f37081c12860c3df97e4`. The GenLayer node at `https://rpc-bradbury.genlayer.com` provides Intelligent Contract calls. The SDK's default L2 endpoint is used for wallet network setup.
 
-The installed SDK successfully read the ScopePulse ABI and the live Bradbury fee policy on 2026-11-20. Live deployment and verdict verification require a wallet-signed transaction. The repository includes no placeholder transaction IDs or verdicts.
+The [production site](https://scopepulse-genlayer.vercel.app/) runs on Vercel. The initial Bradbury contract at `0xC89DbD4Abf4748611d1c9C6929Ae17Bf67802553` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN` during deployment. Its GenLayer deployment ID is `0xfb4d4fb80ca5b9ce66cc1ac8208aeb26f0a6c442d0f3adc13e494734aff922a9`. [Deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x96b7ae2f0a5ad5535c3958d8705f124d522a12fb37b78f4c11222ad4c3a04773)
+
+An assessment dry run identified a positional-only argument mismatch in that immutable deployment. The source now uses the compatible call form. A corrected deployment and a finalized assessment are pending before the reviewer demo can show a verified example.
 
 [GenLayer networks](https://docs.genlayer.com/developers/networks) · [Consensus v0.6 migration](https://docs.genlayer.com/developers/consensus-v06-migration)
