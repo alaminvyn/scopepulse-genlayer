@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "node --experimental-strip-types --test tests/diff.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "verify:bradbury": "node --experimental-strip-types scripts/verify-bradbury.mts",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "genlayer-js": "2.0.0-rc.3",
@@ -16,6 +18,7 @@
     "viem": "^2.29.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/vite": "^4.1.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

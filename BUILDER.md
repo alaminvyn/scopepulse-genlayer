@@ -7,7 +7,8 @@ ScopePulse compares versions of engineering requirements and demonstrates how Ge
 1. Open the [Reviewer Demo](https://scopepulse-genlayer.vercel.app/#demo).
 2. Select each scenario and compare the original and revised requirements. Review the highlighted diff, expected verdict, rationale, and exact excerpts.
 3. Check **Bradbury deployment evidence**. The app resolves the wallet transaction to the GenLayer deployment ID and verifies finalization, execution, and the contract address against its production configuration.
-4. Visit [History](https://scopepulse-genlayer.vercel.app/#history) and the [Usage Guide](https://scopepulse-genlayer.vercel.app/#guide). History shows real submissions tracked in the current browser. Simulated examples stay in the reviewer demo.
+4. Open [Verify assessment](https://scopepulse-genlayer.vercel.app/#verify) to inspect a GenLayer ID or wallet hash. For a negative control, enter the deployment wallet hash below. The report should reject it as an assessment.
+5. Visit [History](https://scopepulse-genlayer.vercel.app/#history) and the [Usage Guide](https://scopepulse-genlayer.vercel.app/#guide). History shows real submissions tracked in the current browser. Simulated examples stay in the reviewer demo.
 
 | Scenario | Expected outcome | Rationale |
 | --- | --- | --- |
@@ -30,14 +31,22 @@ These outcomes are authored simulations. A successful Bradbury dry run for the r
 | Source | [Python contract](contracts/scopepulse.py), checked against deployed source |
 | Repository | [alaminvyn/scopepulse-genlayer](https://github.com/alaminvyn/scopepulse-genlayer), private |
 
+## Verification model
+
+The public report checks the configured Bradbury genesis, resolves a wallet hash through a consensus event when supplied, requires GenLayer finalization and successful execution, and matches the recipient and decoded assessment call. It then reads the final contract state by caller and request ID and validates the result and literal source excerpts. A GenLayer report URL contains the ID alone. A wallet-hash URL also lets the app supply the matched L2 explorer receipt.
+
+The contract returns one overall verdict, a short rationale, and one or two excerpt pairs. The excerpts are checked against calldata. The front end does not infer validator confidence, business severity, individual validator reasoning, or exhaustive conflict coverage. The line diff, inline replacements, and wording cues are deterministic local views. The three demo outcomes are authored examples.
+
 ## Audit and test coverage
 
 The React/Vite frontend uses the public Bradbury RPC. Wallet connection requests account access and a network switch when needed. The assessment path checks the account, chain identity, consensus recipient, and protocol deposit before forwarding a write. Submitted requirements would become public on Bradbury. The Python contract only evaluates and stores results.
 
 - `pnpm build` runs TypeScript checking and creates the production bundle.
-- `pnpm test` checks deterministic comparisons and UTF-8 sizing.
+- `pnpm test` checks diff, source mapping, report IDs, and evidence parsing.
+- `pnpm test:browser` checks desktop and mobile behavior, the wallet pause, and unavailable-report states with network calls blocked.
+- `pnpm verify:bradbury` checks the live deployment, receipt association, exact deployed source, and schema using public reads.
 - `python3 -m unittest discover -s tests -v` exercises assessment logic with stubbed GenVM and model calls.
 
 ## Release status
 
-The Blockaid review is pending. Wallet writes are paused in production. A signed assessment, finalized verdict, and its explorer evidence remain pending. The demo, deployment evidence, and history reads work without connecting a wallet. GitHub repository access is required to review the private source.
+The Blockaid review is pending. Wallet writes are paused in production. Keep `VITE_ENABLE_WALLET_WRITES` unset or false. The production build’s contract address must match the checked-in release evidence. The existing GenLayer contract was reused for V2. A signed assessment, finalized verdict, and its explorer evidence remain pending. The demo, deployment evidence, and history reads work without connecting a wallet. GitHub repository access is required to review the private source.

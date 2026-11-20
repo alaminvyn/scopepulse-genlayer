@@ -1,4 +1,4 @@
-import type { Assessment } from './chain';
+import type { Assessment } from './verification';
 
 export const deployment = {
   address: '0xC437D73bCd58b8B5a3Fe5e601A6B9A2283E2D64F',

@@ -2,25 +2,35 @@
 
 ScopePulse compares two versions of a software requirement and uses a GenLayer Intelligent Contract to review whether the revision preserves, conflicts with, or leaves an original obligation unclear.
 
-## Try the app
+## Review requirements
 
-1. Open **Reviewer demo**. Choose a scenario to see the original text, revised text, and line differences. The three examples run in your browser and require no wallet.
-2. Open **New assessment**. Paste each version into its own editor, one requirement per line. Each version supports up to 2,048 UTF-8 bytes.
-3. Once the wallet security review is resolved and writes are enabled, open the app in a browser with a wallet extension. Select a test account and get test GEN from the [Bradbury faucet](https://testnet-faucet.genlayer.foundation/). If your wallet has an older network with the same chain ID, update its RPC using the faucet's Phase 2 network instructions.
-4. Select **Connect wallet & quote**. Review the GEN deposit and then choose **Confirm in wallet**. The wallet shows gas separately. Use synthetic or non-confidential requirements because submission makes both versions public.
-5. Open **History** to resume tracking a transaction. The wallet transaction links to the block explorer. Once GenLayer reports finalization and successful execution, ScopePulse verifies the transaction's contract, caller, and inputs, then reads and checks its verdict and quoted evidence.
+1. Open [New assessment](https://scopepulse-genlayer.vercel.app/#compare). Paste the two versions or load the synthetic audit-log example. Each version supports up to 2,048 UTF-8 bytes. Editing and comparison stay in the browser.
+2. Use **Split** or **Unified**, navigate change groups, and expand unchanged context when needed. Local cues identify visible changes to numbers, timing, roles, or obligation wording.
+3. Open the [Reviewer Demo](https://scopepulse-genlayer.vercel.app/#demo) for three authored examples. Click an evidence line to jump to its source. The Bradbury deployment check is a separate live read.
+4. Open [Verify assessment](https://scopepulse-genlayer.vercel.app/#verify) with a GenLayer ID or wallet transaction hash. Copy the ID-only report link for another reviewer. Once an assessment is verified, print the report or save it to browser history.
+5. Use [History](https://scopepulse-genlayer.vercel.app/#history) to search and filter locally tracked results. Open a public report to recover its reference in another browser.
 
-The line diff and browser-local history belong to this device. The Intelligent Contract stores verdicts and evidence on Bradbury; GenLayer transaction calldata contains the original and revised requirements.
+Wallet writes are paused while the Blockaid review is unresolved. The quote path, when enabled, can transmit input text to the public RPC. A signed transaction makes both versions public in its calldata.
 
 ## Run locally
 
 Use Node.js 22.18+ or 24 and pnpm. Install with `pnpm install --frozen-lockfile`, start with `pnpm dev`, then open the URL printed by Vite. The local comparison and simulated demo run with no environment configuration. Set the public contract address to enable the live deployment check. Wallet writes stay disabled unless `VITE_ENABLE_WALLET_WRITES=true` is set.
 
-Run `pnpm build` for TypeScript checking and the production bundle, `pnpm test` for local diff tests, and `python3 -m unittest discover -s tests -v` for contract logic tests. The contract suite uses stubbed GenVM and LLM operations to exercise storage, verdict handling, malformed evidence, duplicate requests, and UTF-8 validation.
+Use pnpm 11 with Node.js 24 for the reproducible CI environment.
+
+| Command | Coverage |
+| --- | --- |
+| `pnpm build` | TypeScript checking and the production bundle |
+| `pnpm test` | Deterministic changes, inline tokens, source ranges, report IDs, and result validation |
+| `python3 -m unittest discover -s tests -v` | Contract input and storage behavior with stubbed GenVM and model responses |
+| `pnpm exec playwright install chromium` then `pnpm test:browser` | Desktop comparison, mobile reviewer experience, wallet pause, and report lookup failures |
+| `pnpm verify:bradbury` | Read-only public RPC and explorer validation of the deployment, source, and schema |
+
+The browser suite blocks the Bradbury RPC to exercise predictable failure states. The separate Bradbury script checks the live network without signing or publishing a transaction.
 
 ## Deploy on Bradbury Phase 2
 
-1. In the local development preview, add `#deploy` to the page URL. This route is available only in development.
+1. In the local development preview, add `#deploy` to the page URL. This route is available only in development with the explicit wallet flag enabled. The existing production contract should be reused for this release.
 2. Choose **Connect wallet & quote**. The app checks the Phase 2 genesis on both the wallet and the GenLayer RPC, validates the bundled contract schema, and shows the SDK's deployment fee quote. The zero-argument constructor performs no nondeterministic work.
 3. Click **Sign deployment** and confirm in your browser wallet. Save the wallet transaction hash and GenLayer ID. Wait for **Finalized · verified**, then copy the contract address. If there is an interruption after broadcast, use the existing wallet transaction to recover the GenLayer ID.
 4. Copy `.env.example` to `.env.local` and set `VITE_SCOPEPULSE_CONTRACT` to the verified address. Restart the dev server. The browser submits an RPC simulation before quoting a write when no measured fee profile is supplied. In production, use profile quantities measured against the deployed runtime and the bounded representative inputs. Set all three optional allocation fields together.
