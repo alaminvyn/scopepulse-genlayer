@@ -13,6 +13,7 @@ export type Reference = { hash?: Hash; envelope?: Hash; at: number; contract: Ad
 export type Observation = { phase: string; terminal?: boolean; result?: Assessment; original?: string; revised?: string; hash?: Hash; envelope?: Hash };
 type Provider = NonNullable<NonNullable<Parameters<typeof createClient>[0]>['provider']>;
 
+const chainId = '0x107d';
 const genesis = '0x17d89764d4f4f963158fc4c5e8f2cb670c2837740b35f37081c12860c3df97e4';
 const endpoint = import.meta.env.VITE_BRADBURY_RPC || 'https://rpc-bradbury.genlayer.com';
 const addressPattern = /^0x[0-9a-f]{40}$/i;
@@ -43,7 +44,6 @@ export async function connectWallet() {
   const accounts = await provider.request({ method: 'eth_requestAccounts' }) as Address[];
   const caller = accounts[0];
   if (!caller || !addressPattern.test(caller)) throw new Error('Select an account in your wallet.');
-  const chainId = '0x107d';
   if (await provider.request({ method: 'eth_chainId' }) !== chainId) {
     try {
       await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId }] });
@@ -57,10 +57,15 @@ export async function connectWallet() {
       await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId }] });
     }
   }
-  const walletGenesis = await provider.request({ method: 'eth_getBlockByNumber', params: ['0x0', false] }) as { hash?: string } | null;
-  if (walletGenesis?.hash !== genesis) throw new Error('Update your wallet’s Bradbury RPC to the Phase 2 network.');
+  await assertBradburyWallet(provider);
   if ((await read.getBlock({ blockNumber: 0n })).hash !== genesis) throw new Error('The configured node is not Bradbury Phase 2.');
   return { provider, caller };
+}
+
+async function assertBradburyWallet(provider: Provider) {
+  if (await provider.request({ method: 'eth_chainId' }) !== chainId) throw new Error('Switch your wallet to Bradbury Phase 2.');
+  const walletGenesis = await provider.request({ method: 'eth_getBlockByNumber', params: ['0x0', false] }) as { hash?: string } | null;
+  if (walletGenesis?.hash !== genesis) throw new Error('Update your wallet’s Bradbury RPC to the Phase 2 network.');
 }
 
 export async function quote(original: string, revised: string, id: string, caller: Address) {
@@ -82,6 +87,15 @@ export async function submit(
   const reference: Reference = { at: Date.now(), id, contract, caller };
   const trackedProvider: Provider = {
     request: async (request: { method: string; params?: unknown[] }) => {
+      if (request.method === 'eth_sendTransaction') {
+        await assertBradburyWallet(provider);
+        const tx = request.params?.[0] as { from?: string; to?: string; value?: string; chainId?: string } | undefined;
+        if (tx?.from?.toLowerCase() !== caller.toLowerCase() ||
+            tx?.to?.toLowerCase() !== testnetBradbury.consensusMainContract?.address.toLowerCase() ||
+            tx?.chainId !== chainId || !tx.value || BigInt(tx.value) !== fees.feeValue) {
+          throw new Error('The wallet transaction does not match the reviewed Bradbury fee and recipient.');
+        }
+      }
       const result = await provider.request(request);
       if (request.method === 'eth_sendTransaction' && typeof result === 'string' && hashPattern.test(result)) {
         reference.envelope = result as Hash;
@@ -185,7 +199,9 @@ export async function inspectDeployment(hash: Hash) {
   const tx = await read.getTransaction({ hash: hash as TransactionHash });
   if (tx.statusName === 'CANCELED') throw new Error('Deployment was canceled.');
   if (tx.statusName !== 'FINALIZED') return { phase: tx.statusName ?? 'Awaiting consensus' };
-  if (!isSuccessful(tx) || !tx.recipient) throw new Error('Deployment finalized without successful execution.');
+  if (!isSuccessful(tx) || !tx.recipient || tx.txDataDecoded?.type !== 'deploy') {
+    throw new Error('Transaction did not finalize as a successful contract deployment.');
+  }
   const schema = await read.getContractSchema(tx.recipient);
   if (!schema.methods.assess || !schema.methods.get_assessment) throw new Error('The contract schema does not match ScopePulse.');
   return { phase: 'Finalized · verified', address: tx.recipient };

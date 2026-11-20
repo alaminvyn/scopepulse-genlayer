@@ -1,10 +1,10 @@
 import { createRoot } from 'react-dom/client';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, ArrowDownRight, BookOpen, CircleCheck, Clock3, FlaskConical, GitCompareArrows, History, LayoutGrid, Menu, Plus, ShieldAlert, Wallet, X } from 'lucide-react';
+import { Activity, BookOpen, CircleCheck, Clock3, FlaskConical, GitCompareArrows, History, LayoutGrid, Menu, Plus, ShieldAlert, Wallet, X } from 'lucide-react';
 import { type Hash } from 'viem';
 import { byteCount, compare, MAX_BYTES } from './diff';
-import { examples } from './examples';
-import { connectWallet, demoHash, errorMessage, explorer, hashPattern, observe, quote, ready, submit, type Observation, type Reference, type Verdict } from './chain';
+import { deployment, examples } from './examples';
+import { connectWallet, demoHash, errorMessage, explorer, hashPattern, observe, quote, ready, submit, contract, inspectDeployment, resolveEnvelope, type Assessment, type Observation, type Reference, type Verdict } from './chain';
 import './style.css';
 
 const Deployment = import.meta.env.DEV ? lazy(() => import('./deploy')) : null;
@@ -14,6 +14,7 @@ const paths = [
   ['history', 'History', History], ['guide', 'Usage guide', BookOpen], ['demo', 'Reviewer demo', FlaskConical],
 ] as const;
 const verdicts: Record<Verdict, string> = { compatible: 'Compatible', potential_conflict: 'Potential conflict', needs_review: 'Needs review' };
+const walletPaused = import.meta.env.VITE_ENABLE_WALLET_WRITES !== 'true';
 const storageKey = 'scopepulse.references.v1';
 
 function readHistory(): Reference[] {
@@ -44,6 +45,50 @@ function Comparison({ original, revised }: { original: string; revised: string }
   </section>;
 }
 
+function Evidence({ result }: { result: Assessment }) {
+  return <div className="evidence">
+    <span className={`tag ${result.verdict}`}>{verdicts[result.verdict]}</span>
+    <p>{result.rationale}</p>
+    {result.evidence.map((pair, index) => <div className="two" key={index}>
+      <blockquote><small>Original evidence</small>{pair.original}</blockquote>
+      <blockquote><small>Revised evidence</small>{pair.revised}</blockquote>
+    </div>)}
+  </div>;
+}
+
+function DeploymentEvidence() {
+  const [verification, setVerification] = useState('Checking Bradbury deployment');
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let active = true;
+    async function check() {
+      try {
+        const id = await resolveEnvelope(deployment.envelope);
+        if (id.toLowerCase() !== deployment.id) throw new Error('Unexpected GenLayer deployment ID');
+        const result = await inspectDeployment(deployment.id);
+        if (!active) return;
+        const address = result.address?.toLowerCase();
+        setVerification(address === deployment.address.toLowerCase() && address === contract?.toLowerCase()
+          ? 'FINALIZED · FINISHED_WITH_RETURN'
+          : 'Deployment and app configuration could not be verified');
+      } catch {
+        if (active) setVerification('Live deployment verification unavailable');
+      }
+    }
+    void check();
+    return () => { active = false; };
+  }, [attempt]);
+  return <section className="panel">
+    <header className="panel-head"><div><h2>Bradbury deployment evidence</h2><p>Contract creation and execution status.</p></div><button className="button small" onClick={() => { setVerification('Checking Bradbury deployment'); setAttempt(value => value + 1); }}>Recheck</button></header>
+    <div className="result-body">
+      <p role="status">{verification}</p>
+      <p className="transaction-id">Contract <code>{deployment.address}</code></p>
+      <p className="transaction-id">GenLayer deployment ID <code>{deployment.id}</code></p>
+      <a href={explorer(deployment.envelope)} target="_blank" rel="noreferrer">View deployment transaction in explorer</a>
+    </div>
+  </section>;
+}
+
 function Result({ observation, reference, onRefresh }: { observation?: Observation; reference?: Reference; onRefresh: () => void }) {
   const result = observation?.result;
   const envelope = reference?.envelope ?? observation?.envelope;
@@ -58,14 +103,7 @@ function Result({ observation, reference, onRefresh }: { observation?: Observati
         {envelope && <a href={explorer(envelope)} target="_blank" rel="noreferrer">View wallet transaction in explorer</a>}
         {(observation?.hash ?? reference?.hash) && <p className="transaction-id">GenLayer ID <code>{observation?.hash ?? reference?.hash}</code></p>}
       </>}
-      {result && <div className="evidence">
-        <span className={`tag ${result.verdict}`}>{verdicts[result.verdict]}</span>
-        <p>{result.rationale}</p>
-        {result.evidence.map((pair, i) => <div className="two" key={i}>
-          <blockquote><small>Original evidence</small>{pair.original}</blockquote>
-          <blockquote><small>Revised evidence</small>{pair.revised}</blockquote>
-        </div>)}
-      </div>}
+      {result && <Evidence result={result}/>}
     </div>
   </section>;
 }
@@ -148,7 +186,7 @@ function App() {
   const valid = !!original.trim() && !!revised.trim() && byteCount(original) <= MAX_BYTES && byteCount(revised) <= MAX_BYTES;
   function change(setter: (value: string) => void, value: string) { setter(value); setPrepared(undefined); }
   async function prepare() {
-    if (!valid || busy) return;
+    if (walletPaused || !valid || busy) return;
     setBusy(true); setNotice('');
     try {
       const wallet = await connectWallet();
@@ -159,7 +197,7 @@ function App() {
     finally { setBusy(false); }
   }
   async function send() {
-    if (!prepared || !valid || busy) return;
+    if (walletPaused || !prepared || !valid || busy) return;
     setBusy(true); setNotice('');
     let broadcast = false;
     try {
@@ -177,8 +215,8 @@ function App() {
   function HistoryList() {
     return <section className="panel">
       <header className="panel-head"><div><h2>{isDashboard ? 'Recent assessments' : 'Assessment history'}</h2><p>Transactions tracked in this browser.</p></div>{history.length > 0 && <button className="button small" onClick={refreshNow}>Refresh status</button>}</header>
-      {history.length === 0 ? <div className="empty-state"><History size={24} /><h3>No assessments yet</h3><p>Submitted assessments and their verification status will appear here.</p><a className="button" href="#compare">Start an assessment</a></div> :
-        <ul className="history-list">{(isDashboard ? history.slice(0, 5) : history).map(item => <li key={item.id}><a href={`#history/${item.id}`}><div><strong>Assessment</strong><small>{new Date(item.at).toLocaleString()} · {(item.hash ?? item.envelope)?.slice(0, 12)}…</small></div><span>{status[item.id]?.phase ?? 'Checking status'}</span></a></li>)}</ul>}
+      {history.length === 0 ? <div className="empty-state"><History size={24} /><h3>No assessments yet</h3><p>Submitted transactions appear here on the browser that tracked them. The demo’s simulated results do not appear in history.</p><a className="button" href="#demo">Try the reviewer demo</a></div> :
+        <ul className="history-list">{(isDashboard ? history.slice(0, 5) : history).map(item => <li key={item.id}><a href={`#history/${item.id}`}><div><strong>Assessment</strong><small>{new Date(item.at).toLocaleString()} · {(item.hash ?? item.envelope)?.slice(0, 12)}…</small></div><span>{status[item.id]?.result ? verdicts[status[item.id].result!.verdict] + ' · verified' : status[item.id]?.phase ?? 'Checking status'}</span></a></li>)}</ul>}
     </section>;
   }
 
@@ -215,11 +253,11 @@ function App() {
         </div>
         <Comparison original={original} revised={revised}/>
         <div className="panel submit-panel"><div><h2>Submit to Bradbury</h2><p>Both versions become public on the testnet. Use non-confidential text.</p>
-          {!ready && <p className="notice">Bradbury submission is unavailable until the contract address is configured.</p>}
+          {walletPaused ? <p className="notice">Wallet submissions are paused while the site warning is under review. <a href="#demo">Open the wallet-free demo</a>.</p> : !ready && <p className="notice">Bradbury submission is unavailable until the contract address is configured.</p>}
           {prepared && <p>Estimated protocol deposit <strong>{prepared.estimate.label}</strong>. Wallet gas is extra.</p>}
           {notice && <p role="status" className="notice">{notice}</p>}</div>
-          {prepared ? <div className="actions"><button className="button" disabled={busy} onClick={() => setPrepared(undefined)}>Cancel</button><button className="button primary" disabled={busy} onClick={send}>{busy ? 'Submitting…' : 'Confirm in wallet'}</button></div> :
-            <button className="button primary" disabled={!ready || !valid || busy || Boolean(active && !status[active.id]?.terminal)} onClick={prepare}><Wallet size={17}/>{busy ? 'Preparing…' : 'Connect wallet & quote'}</button>}
+          {!walletPaused && (prepared ? <div className="actions"><button className="button" disabled={busy} onClick={() => setPrepared(undefined)}>Cancel</button><button className="button primary" disabled={busy} onClick={send}>{busy ? 'Submitting…' : 'Confirm in wallet'}</button></div> :
+            <button className="button primary" disabled={!ready || !valid || busy || Boolean(active && !status[active.id]?.terminal)} onClick={prepare}><Wallet size={17}/>{busy ? 'Preparing…' : 'Connect wallet & quote'}</button>)}
         </div>
         <Result observation={active && status[active.id]} reference={active} onRefresh={refreshNow}/>
       </>}
@@ -228,18 +266,23 @@ function App() {
         {tracked ? <><Result observation={status[tracked.id]} reference={tracked} onRefresh={refreshNow}/>{status[tracked.id]?.result && <Comparison original={status[tracked.id].original!} revised={status[tracked.id].revised!}/>}</> : <p>This assessment is unavailable in this browser.</p>}</>}
       {route === 'guide' && <><div className="page-title"><h1>Usage guide</h1><p>From a first comparison to a verified testnet verdict.</p></div><ol className="panel guide">
         <li><h2>Compare two versions</h2><p>Open New assessment and paste your original and revised requirements. Put each requirement on its own line. Review the added and removed lines.</p></li>
-        <li><h2>Set up a testnet wallet</h2><p>Install an Ethereum-compatible browser wallet, add Bradbury Phase 2, and request test GEN. Select the test account in the wallet.</p><a href="https://testnet-faucet.genlayer.foundation/" target="_blank" rel="noreferrer">Bradbury network and faucet</a></li>
-        <li><h2>Review and sign</h2><p>Use non-confidential text. Select Connect wallet &amp; quote, review the estimated deposit, then confirm the transaction in your wallet.</p></li>
-        <li><h2>Check the verdict</h2><p>Open History to resume checking a submission. Once execution is successful and finalized, review the verdict and quoted evidence. The wallet transaction opens in the explorer.</p></li>
-        <li><h2>Try it without a wallet</h2><p>Open the reviewer demo to compare three example changes.</p><a href="#demo">Open reviewer demo</a></li>
+        <li><h2>Review a simulated outcome</h2><p>Select a scenario in the reviewer demo to see its expected verdict and sample evidence. The demo works without a wallet.</p><a href="#demo">Open reviewer demo</a></li>
+        <li><h2>Verify the deployment</h2><p>In the demo, check the Bradbury deployment status and open the explorer link for the wallet transaction. Contract deployment and an assessment are separate transactions.</p></li>
+        <li><h2>Read assessment history</h2><p>History tracks submissions from this browser. A verified verdict requires GenLayer finalization, successful execution, and a matching result from the contract. Explorer success confirms the wallet transaction reached the chain.</p></li>
+        {walletPaused && <li><h2>Wallet review in progress</h2><p>Live submissions are paused while the site warning is under review. You can still compare requirements and verify the contract deployment.</p></li>}
       </ol></>}
       {isDemo && <>
         <div className="page-title"><h1>Reviewer demo</h1><p>Explore requirement changes in read-only mode. No wallet needed.</p></div>
-        <section className="panel demo-head"><label>Example scenario <select value={example} onChange={event => setExample(Number(event.target.value))}>{examples.map((item, index) => <option value={index} key={item.name}>{item.name}</option>)}</select></label><span className="tag">Example data</span></section>
+        <section className="panel demo-head"><label>Example scenario <select value={example} onChange={event => setExample(Number(event.target.value))}>{examples.map((item, index) => <option value={index} key={item.name}>{item.name}</option>)}</select></label><span className="tag needs_review">Simulation</span></section>
         <div className="two">{([['Original', sample.original], ['Revised', sample.revised]] as const).map(([label, text]) => <article className="panel read-only" key={label}><h2>{label} requirements</h2><pre>{text}</pre></article>)}</div>
         <Comparison original={sample.original} revised={sample.revised}/>
-        {reviewHash ? <><div className="page-title secondary"><h2>Verified sample transaction</h2><p>This live read is independent of the example above.</p></div><Result observation={review ?? { phase: 'Checking Bradbury', hash: reviewHash }} onRefresh={refreshNow}/>{review?.result && <Comparison original={review.original!} revised={review.revised!}/>}</> :
-          <div className="panel demo-note"><ArrowDownRight size={20}/><p>These examples show local text changes. A verified Bradbury sample will appear here once a real transaction is configured.</p></div>}
+        <section className="panel">
+          <header className="panel-head"><div><h2>Expected assessment</h2><p>Simulated result prepared for this example. No assessment transaction was submitted.</p></div></header>
+          <div className="result-body"><Evidence result={sample.expected}/></div>
+        </section>
+        <DeploymentEvidence/>
+        {reviewHash ? <><div className="page-title secondary"><h2>On-chain assessment evidence</h2><p>Live verdict and evidence from a separate Bradbury assessment transaction.</p></div><Result observation={review ?? { phase: 'Checking Bradbury', hash: reviewHash }} onRefresh={refreshNow}/>{review?.result && <Comparison original={review.original!} revised={review.revised!}/>}</> :
+          <section className="panel read-only"><h2>On-chain assessment evidence</h2><p>No finalized assessment is available for this demo yet.</p></section>}
       </>}
       <footer>ScopePulse <span>Local comparison · GenLayer consensus</span></footer>
       </div>

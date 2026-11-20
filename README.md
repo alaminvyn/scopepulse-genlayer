@@ -6,7 +6,7 @@ ScopePulse compares two versions of a software requirement and uses a GenLayer I
 
 1. Open **Reviewer demo**. Choose a scenario to see the original text, revised text, and line differences. The three examples run in your browser and require no wallet.
 2. Open **New assessment**. Paste each version into its own editor, one requirement per line. Each version supports up to 2,048 UTF-8 bytes.
-3. With a deployed contract configured, open the app in a browser with a wallet extension. Select a test account and get test GEN from the [Bradbury faucet](https://testnet-faucet.genlayer.foundation/). If your wallet has an older network with the same chain ID, update its RPC using the faucet's Phase 2 network instructions.
+3. Once the wallet security review is resolved and writes are enabled, open the app in a browser with a wallet extension. Select a test account and get test GEN from the [Bradbury faucet](https://testnet-faucet.genlayer.foundation/). If your wallet has an older network with the same chain ID, update its RPC using the faucet's Phase 2 network instructions.
 4. Select **Connect wallet & quote**. Review the GEN deposit and then choose **Confirm in wallet**. The wallet shows gas separately. Use synthetic or non-confidential requirements because submission makes both versions public.
 5. Open **History** to resume tracking a transaction. The wallet transaction links to the block explorer. Once GenLayer reports finalization and successful execution, ScopePulse verifies the transaction's contract, caller, and inputs, then reads and checks its verdict and quoted evidence.
 
@@ -14,7 +14,7 @@ The line diff and browser-local history belong to this device. The Intelligent C
 
 ## Run locally
 
-Use Node.js 22.18+ or 24 and pnpm. Install with `pnpm install --frozen-lockfile`, start with `pnpm dev`, then open the URL printed by Vite. The local comparison and demo run with no environment configuration.
+Use Node.js 22.18+ or 24 and pnpm. Install with `pnpm install --frozen-lockfile`, start with `pnpm dev`, then open the URL printed by Vite. The local comparison and simulated demo run with no environment configuration. Set the public contract address to enable the live deployment check. Wallet writes stay disabled unless `VITE_ENABLE_WALLET_WRITES=true` is set.
 
 Run `pnpm build` for TypeScript checking and the production bundle, `pnpm test` for local diff tests, and `python3 -m unittest discover -s tests -v` for contract logic tests. The contract suite uses stubbed GenVM and LLM operations to exercise storage, verdict handling, malformed evidence, duplicate requests, and UTF-8 validation.
 
@@ -49,6 +49,6 @@ The [production site](https://scopepulse-genlayer.vercel.app/) runs on Vercel. T
 
 The initial immutable deployment failed an assessment dry run because its GenVM runner requires a positional argument for the comparison principle. The corrected contract at `0xC437D73bCd58b8B5a3Fe5e601A6B9A2283E2D64F` reached GenLayer `FINALIZED` with `FINISHED_WITH_RETURN` and its deployed source matches this repository. The GenLayer deployment ID is `0xf3b0c431e13c7306e922abac5ff8d9ac7c45773b32e6144292965f7b01c4e96e`. [Corrected deployment wallet transaction](https://scan.testnet-chain.genlayer.com/tx/0x1216a73d54b6d12ce440ecaef275a3b8a74e2d1f2b1d9f9d4f79637486b1b58f)
 
-The synthetic audit-log example passed a live Bradbury simulation. A wallet-signed assessment and its finalized verdict are pending.
+The synthetic audit-log example passed a live Bradbury simulation. A wallet-signed assessment and its finalized verdict are pending while Blockaid reviews the site warning. See the [GenLayer Builder evidence](BUILDER.md) for the reviewer path, verification steps, and release status.
 
 [GenLayer networks](https://docs.genlayer.com/developers/networks) · [Consensus v0.6 migration](https://docs.genlayer.com/developers/consensus-v06-migration)
